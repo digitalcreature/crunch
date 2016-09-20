@@ -178,6 +178,6 @@ if error then
 	os.exit(1)
 end
 
-if type(crunchfile._init) == "function" then
-	crunchfile._init(data)
+if type(crunchfile.init) == "function" then
+	crunchfile.init(data)
 end
