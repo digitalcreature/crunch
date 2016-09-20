@@ -16,7 +16,7 @@ nums = {
 	["Other?"] = nil,
 }
 
-function _init(data)
+function init(data)
 	data:setcolumnvalues("Class:")
 		("Freshman", "Sophomore", "Junior", "Senior", "Grad Student", "Other?")
 	data:setcolumnvalues("Major", "Other")
@@ -27,25 +27,19 @@ function _init(data)
 	end
 end
 
-Target{
-	"test",
-	function()
-		print "did a thing"
-	end
-}
-Target {
-	"histo",
-	function()
-		local leftlen = 32
-		local c = "Class:"
+function targets.test()
+	print "did a thing"
+end
+function targets.histo()
+	local leftlen = 32
+	local c = "Class:"
+	data:histogram(c, leftlen)
+	print()
+	c = "Major"
+	data:histogram(c, leftlen)
+	print()
+	for c = 7, 18 do
 		data:histogram(c, leftlen)
-		print()
-		c = "Major"
-		data:histogram(c, leftlen)
-		print()
-		for c = 7, 18 do
-			data:histogram(c, leftlen)
-			print(("Average Experience (Months): "):setlen(leftlen + 1)..("%0.5g\n"):format(data:average(c)))
-		end
+		print(("Average Experience (Months): "):setlen(leftlen + 1)..("%0.5g\n"):format(data:average(c)))
 	end
-}
+end

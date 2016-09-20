@@ -1,6 +1,6 @@
 #!/bin/sh
 _=[[  #shell shenanigans to avoid relying on a specific lua install
-      #change this line if your install is different
+      #change this line if your install is different:
       lua5.3 $0 "$@"; return; ]] _ = nil
 
 require "tsv"
@@ -73,7 +73,8 @@ Option{
 Option{
 	"--interactive",
 	function()
-		isinteractive = true
+		print("interactive mode")
+		os.exit(0)
 	end,
 	description = "interactive mode"
 }
@@ -102,58 +103,29 @@ function help()
 		)
 	end
 	print()
-	local c1, c2, c3 = 16, 24, 32
-	local hb = ("="):rep(c1 + c2 + c3)
-	print("available targets:")
-	print(hb)
-	print(
-		("name:"):setlen(c1)
-		..("args:"):setlen(c2)
-		..("description:"):setlen(c3)
-	)
-	print(hb)
-	for _, target in ipairs(targets) do
-		print(
-			target.name:setlen(c1)
-			..target.usage:setlen(c2)
-			..target.description:setlen(c3)
-		)
-	end
-	print()
 end
 
-local Target = callclass(targets)
+local targets = {}
 
-Target{
-	"data",
-	function()
-		for _, c in ipairs(data.columns) do
-			print(c.id, c.name)
-		end
+function targets.data()
+	for _, c in ipairs(data.columns) do
+		print(c.id, c.name)
 	end
-}
-Target{
-	"row",
-	function(r)
-		r = tonumber(r)
-		if r then
-			data:printrow(r)
-		end
-	end,
-	argcount = 1,
-	usage = "<row number>"
-}
-Target {
-	"column",
-	function(c)
-		c = data.columns[c] or tonumber(c)
-		if c then
-			data:printcolumn(c)
-		end
-	end,
-	usage = "<column number or name>"
-}
+end
 
+function targets.row(r)
+	r = tonumber(r)
+	if r then
+		data:printrow(r)
+	end
+end
+
+function targets.column(c)
+	c = data.columns[c] or tonumber(c)
+	if c then
+		data:printcolumn(c)
+	end
+end
 
 local args = {...}
 
@@ -165,7 +137,7 @@ while args[i + 1] do
 	if option then
 		if args[i + option.argcount] then
 			if option.argcount > 0 then
-				option(table.unpack(args, i + 1, i + c))
+				option(table.unpack(args, i + 1, i + option.argcount))
 			else
 				option()
 			end
@@ -184,7 +156,7 @@ end
 
 local crunchfile = {}
 
-crunchfile.Target = Target
+crunchfile.targets = targets
 
 local chunk, error = loadfile(cfname, nil, crunchfile)
 if chunk then
