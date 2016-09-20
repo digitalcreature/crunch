@@ -1,0 +1,208 @@
+#!/bin/lua
+
+require "tsv"
+require "util"
+
+local binname = "crunch"
+local cfname = "crunchfile"
+
+local tokens = arg[0]:gmatch("([%w%n%.]+)")
+local token
+repeat
+	binname = token
+	token = tokens()
+until not token
+
+local options = {}
+local targets = {}
+
+local help
+local isinteractive
+
+local function callclass(t, init)
+	local mt = {
+		__index = {
+			description = "",
+			exec = function() end,
+			argcount = 0,
+			usage = "",
+		},
+		__call = function(self, ...)
+			self.exec(...)
+		end
+	}
+	return function (i)
+		i = i or {}
+		i.name = i[1] or i.name
+		i.exec = i[2] or i.exec
+		t[i.name] = i
+		table.insert(t, i)
+		setmetatable(i, mt)
+		if init then init(i) end
+		return i
+	end
+end
+
+local Option = callclass(options, function(o)
+	o.shortname = o.shortname or "-"..o.name:match("[%a%n]")
+	options[o.shortname] = o
+end)
+
+Option{
+	"--help",
+	function()
+		help()
+		os.exit(0)
+	end,
+	description = "show usage info"
+}
+
+Option{
+	"--file",
+	function(fname)
+		cfname = fname
+	end,
+	argcount = 1,
+	usage = "<crunchfile>",
+	description = "specify alternate crunchfile"
+}
+
+Option{
+	"--interactive",
+	function()
+		isinteractive = true
+	end,
+	description = "interactive mode"
+}
+
+function help()
+	print("usage:")
+	print("$ "..binname.." (options <args...>...) [target] <args...>")
+	print()
+	local c1, c2, c3, c4 = 16, 8, 16, 32
+	local hb = ("="):rep(c1 + c2 + c3 + c4)
+	print("available options:")
+	print(hb)
+	print(
+		("name:"):setlen(c1)
+		..("alt:"):setlen(c2)
+		..("args:"):setlen(c3)
+		..("description:"):setlen(c4)
+	)
+	print(hb)
+	for _, option in ipairs(options) do
+		print(
+			option.name:setlen(c1)
+			..option.shortname:setlen(c2)
+			..option.usage:setlen(c3)
+			..option.description:setlen(c4)
+		)
+	end
+	print()
+	local c1, c2, c3 = 16, 24, 32
+	local hb = ("="):rep(c1 + c2 + c3)
+	print("available targets:")
+	print(hb)
+	print(
+		("name:"):setlen(c1)
+		..("args:"):setlen(c2)
+		..("description:"):setlen(c3)
+	)
+	print(hb)
+	for _, target in ipairs(targets) do
+		print(
+			target.name:setlen(c1)
+			..target.usage:setlen(c2)
+			..target.description:setlen(c3)
+		)
+	end
+	print()
+end
+
+local Target = callclass(targets)
+
+Target{
+	"data",
+	function()
+		for _, c in ipairs(data.columns) do
+			print(c.id, c.name)
+		end
+	end
+}
+Target{
+	"row",
+	function(r)
+		r = tonumber(r)
+		if r then
+			data:printrow(r)
+		end
+	end,
+	argcount = 1,
+	usage = "<row number>"
+}
+Target {
+	"column",
+	function(c)
+		c = data.columns[c] or tonumber(c)
+		if c then
+			data:printcolumn(c)
+		end
+	end,
+	usage = "<column number or name>"
+}
+
+
+local args = {...}
+
+local i = 0
+while args[i + 1] do
+	i = i + 1
+	local arg = args[i]
+	local option = options[arg]
+	if option then
+		if args[i + option.argcount] then
+			if option.argcount > 0 then
+				option(table.unpack(args, i + 1, i + c))
+			else
+				option()
+			end
+			i = i + option.argcount
+		else
+			print("not enough arguments for option \'"..arg.."\'")
+			print("need "..option.argcount..", given "..(#args - i))
+			print("usage:")
+			print("$ "..binname.." "..arg.." "..option.usage)
+			os.exit(1)
+		end
+	else
+		break
+	end
+end
+
+local crunchfile = {}
+
+crunchfile.Target = Target
+
+local chunk, error = loadfile(cfname, nil, crunchfile)
+if chunk then
+	chunk()
+else
+	print("error loading crunchfile \'"..cfname.."\':")
+	print(error)
+	os.exit(1)
+end
+
+table.print(crunchfile)
+table.print(targets)
+
+local error
+data, error = tsv.Data(crunchfile.fname, crunchfile.nums)
+
+if error then
+	print(error)
+	os.exit(1)
+end
+
+if type(crunchfile._init) == "function" then
+	crunchfile._init(data)
+end
