@@ -1,5 +1,9 @@
-#!/bin/lua
+#!/bin/sh
 
+_=[[
+lua $0 "$@"
+return
+]] _ = nil
 require "tsv"
 require "util"
 
