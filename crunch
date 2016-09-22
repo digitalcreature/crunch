@@ -127,9 +127,13 @@ end
 
 local args = {...}
 
-local i = 0
-while args[i + 1] do
-	i = i + 1
+if #args == 0 then
+	help()
+	os.exit(1)
+end
+
+local i = 1
+while args[i] do
 	local arg = args[i]
 	local option = options[arg]
 	if option then
@@ -150,9 +154,10 @@ while args[i + 1] do
 	else
 		break
 	end
+	i = i + 1
 end
 
-crunchfile = {}
+crunchfile = setmetatable({}, {__index = _G})
 
 crunchfile.targets = targets
 
@@ -173,6 +178,20 @@ if error then
 	os.exit(1)
 end
 
-if type(crunchfile.init) == "function" then
+if crunchfile.init then
 	crunchfile.init(data)
+end
+
+local target = args[i]
+if target then
+	target = targets[target]
+	if type(target) == "function" then
+		target(table.unpack(args, i + 1))
+	else
+		print("invalid target \'"..args[i].."\'")
+		os.exit(1)
+	end
+else
+	help()
+	os.exit(1)
 end

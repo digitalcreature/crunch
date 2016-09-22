@@ -30,6 +30,7 @@ end
 function targets.test()
 	print "did a thing"
 end
+
 function targets.histo()
 	local leftlen = 32
 	local c = "Class:"
