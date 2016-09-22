@@ -27,8 +27,8 @@ function init(data)
 	end
 end
 
-function targets.test()
-	print "did a thing"
+function targets.test(...)
+	print(...)
 end
 
 function targets.histo()

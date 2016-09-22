@@ -67,8 +67,7 @@ function options:interactive()
 	if not self then return {
 		description = "interactive mode"
 	} end
-	print("interactive mode")
-	os.exit(0)
+	isinteractive = true
 end
 
 function help()
@@ -125,12 +124,11 @@ function targets.column(c)
 	end
 end
 
-local args = {...}
-
-if #args == 0 then
-	help()
-	os.exit(1)
+function targets.exit()
+	os.exit(0)
 end
+
+local args = {...}
 
 local i = 1
 while args[i] do
@@ -155,6 +153,11 @@ while args[i] do
 		break
 	end
 	i = i + 1
+end
+
+if not args[i] and not isinteractive then
+	help()
+	os.exit(1)
 end
 
 crunchfile = setmetatable({}, {__index = _G})
@@ -183,15 +186,38 @@ if crunchfile.init then
 end
 
 local target = args[i]
-if target then
-	target = targets[target]
+function dotarget(name, ...)
+	local target = targets[name]
 	if type(target) == "function" then
-		target(table.unpack(args, i + 1))
+		return target(...) or 0
 	else
-		print("invalid target \'"..args[i].."\'")
-		os.exit(1)
+		print("invalid target \'"..name.."\'")
+		return 1
 	end
-else
-	help()
-	os.exit(1)
+end
+
+if target then
+	local status = dotarget(target, table.unpack(args, i + 1))
+	if not isinteractive then
+		os.exit(status)
+	end
+end
+
+if isinteractive then
+	local lines = io.lines()
+	local line
+	repeat
+		io.write("> ")
+		line = lines()
+		if line then
+			local args = {}
+			for token in line:split() do
+				if #token > 0 then
+					table.insert(args, token)
+				end
+			end
+			dotarget(table.unpack(args))
+		end
+	until not line
+	print()
 end
