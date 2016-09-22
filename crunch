@@ -1,7 +1,4 @@
-#!/bin/sh
-_=[[  #shell shenanigans to avoid relying on a specific lua install
-      #change this line if your install is different:
-      lua5.3 $0 "$@"; return; ]] _ = nil
+#!/usr/bin/env lua5.3
 
 require "tsv"
 require "util"
