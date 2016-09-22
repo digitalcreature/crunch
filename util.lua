@@ -1,3 +1,5 @@
+util = {}
+
 local function lenfromflags(flags)
 	if type(flags) == "table" then
 		return flags.valuelen, ""
@@ -124,3 +126,12 @@ function string:setlen(newlen, pad)
 		end
 	end
 end
+
+util.mt_recordkeyorder = {
+	__newindex = function(self, k, v)
+		rawset(self, k, v)
+		if type(k) ~= "number" then
+			rawset(self, #self + 1, k)
+		end
+	end
+}

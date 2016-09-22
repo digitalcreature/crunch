@@ -16,68 +16,63 @@ repeat
 	token = tokens()
 until not token
 
-local options = {}
-local targets = {}
+options = setmetatable({}, {
+	__metatable = {
+		__index = {
+			argcount = 0,
+			description = "",
+			usage = "",
+		},
+		__call = function(self, ...)
+			self:exec(...)
+		end
+	},
+	__newindex = function(t, k, v)
+		if type(k) == "string" and type(v) == "function" then
+			local f = v
+			v = setmetatable(f() or {}, getmetatable(options))
+			v.exec = f
+			local name, shortname = v.name, v.shortname
+			k, v.name = v.name or "--"..k, v.name or "--"..k
+			if v.shortname ~= false then
+				v.shortname = v.shortname or "-"..k:match("([^-])")
+				rawset(t, v.shortname, v)
+			end
+		end
+		rawset(t, k, v)
+		if type(k) ~= "number" then
+			rawset(t, #t + 1, v)
+		end
+	end
+})
 
 local help
 local isinteractive
 
-local function callclass(t, init)
-	local mt = {
-		__index = {
-			description = "",
-			exec = function() end,
-			argcount = 0,
-			usage = "",
-		},
-		__call = function(self, ...)
-			self.exec(...)
-		end
-	}
-	return function (i)
-		i = i or {}
-		i.name = i[1] or i.name
-		i.exec = i[2] or i.exec
-		t[i.name] = i
-		table.insert(t, i)
-		setmetatable(i, mt)
-		if init then init(i) end
-		return i
-	end
+function options:help()
+	if not self then return {
+		description = "show usage info"
+	} end
+	help()
+	os.exit(0)
 end
 
-local Option = callclass(options, function(o)
-	o.shortname = o.shortname or "-"..o.name:match("[%a%n]")
-	options[o.shortname] = o
-end)
+function options:file(fname)
+	if not self then return {
+		description = "specify crunchfile location",
+		usage = "<crunchfile>",
+		argcount = 1
+	} end
+	cfname = fname
+end
 
-Option{
-	"--help",
-	function()
-		help()
-		os.exit(0)
-	end,
-	description = "show usage info"
-}
-
-Option{
-	"--file",
-	function(fname)
-		cfname = fname
-	end,
-	argcount = 1,
-	usage = "<crunchfile>",
-	description = "specify alternate crunchfile"
-}
-
-Option{
-	"--interactive",
-	function()
-		print("interactive mode")
-		os.exit(0)
-	end,
-	description = "interactive mode"
-}
+function options:interactive()
+	if not self then return {
+		description = "interactive mode"
+	} end
+	print("interactive mode")
+	os.exit(0)
+end
 
 function help()
 	print("usage:")
@@ -105,7 +100,13 @@ function help()
 	print()
 end
 
-local targets = {}
+targets = setmetatable({}, util.mt_recordkeyorder)
+
+function targets.targets()
+	for _, name in ipairs(targets) do
+		print(name)
+	end
+end
 
 function targets.data()
 	for _, c in ipairs(data.columns) do
@@ -154,7 +155,7 @@ while args[i + 1] do
 	end
 end
 
-local crunchfile = {}
+crunchfile = {}
 
 crunchfile.targets = targets
 
@@ -166,9 +167,6 @@ else
 	print(error)
 	os.exit(1)
 end
-
-table.print(crunchfile)
-table.print(targets)
 
 local error
 data, error = tsv.Data(crunchfile.fname, crunchfile.nums)
