@@ -1,37 +1,42 @@
 util = {}
 
-local function lenfromflags(flags)
-	if type(flags) == "table" then
-		return flags.valuelen, ""
-	else
-		return flags
+local function writeasstring(v, flags, depth)
+	v = tostring(v)
+	if depth then
+		local len
+		if depth < 0 then
+			len = flags.keylen
+		else
+			len = flags.valuelen
+		end
+		v = v:setlen(len)
 	end
-end
-
-local function writeasstring(v, flags)
-	io.write(tostring(v):setlen(lenfromflags(flags)))
+	io.write(v)
 end
 
 local _write = io.write
 
-io.write = {
+io.write = setmetatable({
 	number = writeasstring,
 	boolean = writeasstring,
 	thread = writeasstring,
 	userdata = writeasstring,
 	["nil"] = writeasstring,
 	["function"] = writeasstring,
-	string = function(v, flags)
-		io.write(("\""..v.."\""):setlen(lenfromflags(flags)))
+	string = function(v, flags, depth)
+		writeasstring("\""..v.."\"", flags, depth)
 	end,
-}
-
-setmetatable(io.write, {__call = function(_, ...) _write(...) end})
+},
+{
+	__call = function(_, ...)
+		_write(...)
+	end
+})
 
 function io.write.table(t, flags, depth)
 	depth = depth or 1
 	if depth < 0 then
-		writeasstring(tostring(t), flags)
+		writeasstring(t, flags, depth)
 		return
 	end
 	flags = flags or {}
@@ -39,7 +44,7 @@ function io.write.table(t, flags, depth)
 	flags.tabstr = flags.tabstr or "  "
 	if not flags.history[t] and (not flags.maxdepth or depth <= flags.maxdepth) then
 		flags.history[t] = true
-		io.write(tostring(t)..":")
+		writeasstring(tostring(t)..":", flags, depth)
 		if flags.showmetatables then
 			local mt = getmetatable(t)
 			if mt then
@@ -53,7 +58,7 @@ function io.write.table(t, flags, depth)
 			print()
 			io.write(string.rep(flags.tabstr, depth))
 			io.write("<")
-			io.write[type(k)](k, flags.keylen and flags.keylen - 2, -1)
+			io.write[type(k)](k, flags, -1)
 			io.write("> = ")
 			io.write[type(v)](v, flags, depth + 1)
 		end
@@ -62,13 +67,13 @@ function io.write.table(t, flags, depth)
 				print()
 				io.write(string.rep(flags.tabstr, depth))
 				io.write("[")
-				io.write[type(k)](k, flags.keylen and flags.keylen - 2, -1)
+				io.write[type(k)](k, flags, -1)
 				io.write("] = ")
 				io.write[type(v)](v, flags, depth + 1)
 			end
 		end
 	else
-		io.write(tostring(t))
+		writeasstring(t, flags, depth)
 	end
 end
 
